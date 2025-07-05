@@ -493,7 +493,7 @@ const QuestionTogglePage = () => {
           setAnswers={setExperienceAnswers}
           parentAnswers={parentZoneAnswers}
           setParentAnswers={setParentZoneAnswers}
-          disabled={!rideActive.every(Boolean)}
+          disabled={!(rideActive.slice(0, 5).every(Boolean))}
         />
 
         {/* PDF Upload */}
