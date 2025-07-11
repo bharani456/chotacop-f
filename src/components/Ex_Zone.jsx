@@ -12,10 +12,10 @@ const parentQuestions = [
   "Did you feel the ride was safe for your family?"
 ];
 
-const Ex_Zone = ({ answers, setAnswers, parentAnswers, setParentAnswers, disabled }) => {
+const Ex_Zone = ({ answers, setAnswers, parentAnswers, setParentAnswers, disabled, onPopup }) => {
   const handleToggle = (idx) => {
     if (disabled) {
-      alert('Please complete answering all 7 rides.');
+      if (onPopup) onPopup('Please complete at least 5 rides before answering this zone.');
       return;
     }
     const updated = [...answers];
@@ -25,7 +25,7 @@ const Ex_Zone = ({ answers, setAnswers, parentAnswers, setParentAnswers, disable
 
   const handleParentToggle = (idx) => {
     if (disabled) {
-      alert('Please complete all 7 ride checkboxes first.');
+      if (onPopup) onPopup('Please complete at least 5 rides before answering this zone.');
       return;
     }
     const updated = [...parentAnswers];

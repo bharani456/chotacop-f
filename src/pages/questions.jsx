@@ -5,9 +5,10 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Ex_Zone from "../components/Ex_Zone";
 import axios from "axios";
+import Popup from "../components/Popup";
 
 const questions = [
-  "Were you riding with a parent?", // Parent question moved to top of questions
+  "Were you riding with a parent?",
   "If on a bike or scooter, did everyone wear a helmet?",
   "If in a car, did everyone wear a seatbelt?",
   "Did the driver honk too much?",
@@ -43,14 +44,20 @@ const QuestionTogglePage = () => {
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [rideActive, setRideActive] = useState(Array(TOTAL_RIDES).fill(false));
   const [submitted, setSubmitted] = useState(false);
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
+  // Tooltip state for Download Certificate button
+  const [showCertTooltip, setShowCertTooltip] = useState(false);
 
   const handleToggle = (rideIdx, questionIdx) => {
     if (!isStudentInfoComplete) {
-      alert('Please fill in all student information before answering.');
+      setPopupMessage('Please fill in all student information before answering.');
+      setPopupOpen(true);
       return;
     }
     if (!rideActive[rideIdx]) {
-      alert('Activate this ride by checking the box before answering.');
+      setPopupMessage('Activate this ride by checking the box before answering.');
+      setPopupOpen(true);
       return;
     }
     if (submittedRides[rideIdx]) return;
@@ -65,13 +72,15 @@ const QuestionTogglePage = () => {
         if (idx === 0 || prev[idx - 1]) {
           return prev.map((v, i) => (i === idx ? true : v));
         } else {
-          alert(`Please activate Ride ${idx} before activating Ride ${idx + 1}.`);
+          setPopupMessage(`Please activate Ride ${idx} before activating Ride ${idx + 1}.`);
+          setPopupOpen(true);
           return prev;
         }
       } else {
         const anyLaterChecked = prev.slice(idx + 1).some(Boolean);
         if (anyLaterChecked) {
-          alert(`Please deactivate all rides after Ride ${idx + 1} first.`);
+          setPopupMessage(`Please deactivate all rides after Ride ${idx + 1} first.`);
+          setPopupOpen(true);
           return prev;
         } else {
           return prev.map((v, i) => (i === idx ? false : v));
@@ -96,7 +105,6 @@ const QuestionTogglePage = () => {
         headers: { "Content-Type": "application/json" },
       });
       if (res.data.exists) {
-        // Fetch full data for this email
         const dataRes = await axios.post("https://chotacop.in/api/email-data", { email }, {
           headers: { "Content-Type": "application/json" },
         });
@@ -132,12 +140,15 @@ const QuestionTogglePage = () => {
             info.c5 === 1,
             false
           ]);
-          alert("Email already exists. Click OK to get your datas.");
+          setPopupMessage(`Welcome back, ${info.name || "User"}!`);
+          setPopupOpen(true);
         } else {
-          alert("Email found but no data to fill.");
+          setPopupMessage("Welcome back!");
+          setPopupOpen(true);
         }
       } else {
-        alert("Email not found in database.");
+        setPopupMessage("Welcome to chotacop!");
+        setPopupOpen(true);
       }
     } catch {
       alert("Error checking email. Please try again.");
@@ -155,8 +166,9 @@ const QuestionTogglePage = () => {
   };
 
   const handleDownloadCertificate = async () => {
-    if (!rideActive.every(Boolean)) {
-      alert('Please complete all seven rides before generating the certificate.');
+    if (!(rideActive.every(Boolean) && submitted)) {
+      setPopupMessage('Please complete all seven rides and submit before generating the certificate.');
+      setPopupOpen(true);
       return;
     }
     const pdfBlob = await generateAndDownloadCertificate();
@@ -233,7 +245,8 @@ const QuestionTogglePage = () => {
     setSubmittedRides(updatedSubmitted);
     await sendAnswersToBackend();
     setSubmitted(true);
-    alert('Submitted successfully!');
+    setPopupMessage('Submitted successfully!');
+    setPopupOpen(true);
   };
 
   const sendAnswersToBackend = async () => {
@@ -248,7 +261,7 @@ const QuestionTogglePage = () => {
     for (let q = 0; q < questions.length; q++) {
       data[`q${q + 1}`] = activeRidesAnswers.map((ride) => ride[q] ? 1 : 0);
     }
-    data["q13"] = data["q1"]; // Parent question is now in q1, but backend expects it as q13
+    data["q13"] = data["q1"];
     for (let i = 0; i < experienceAnswers.length; i++) {
       data[`c${i + 1}`] = experienceAnswers[i] ? 1 : 0;
     }
@@ -266,11 +279,25 @@ const QuestionTogglePage = () => {
 
   return (
     <div className="min-h-screen bg-[#fdf5eb]">
+      <Popup open={popupOpen} onClose={() => setPopupOpen(false)}>
+        {popupMessage}
+      </Popup>
       <Header hideAuthLinks={true} showHomeOnQuestions={true} />
       <div className="w-full max-w-8xl mx-auto p-6 md:p-10">
         {/* Student Info Form */}
         <div className="bg-[#fdf6bf] shadow-xl rounded-2xl p-6 mb-8 mt-[-40px]">
           <div className="flex flex-wrap gap-6 justify-between items-center">
+            {/* Desktop: Chotacop Card Button above email */}
+            <div className="w-full mb-4 hidden md:block">
+              <button
+                type="button"
+                onClick={handleDownloadReportCard}
+                className="w-fit px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition"
+                title="Download Chota Cop Report Card"
+              >
+                Chotacop Card PDF (Optional) ⬇️
+              </button>
+            </div>
             {/* Mobile: Chotacop Card Button above email */}
             <div className="w-full block md:hidden mb-2">
               <button
@@ -282,7 +309,7 @@ const QuestionTogglePage = () => {
                 Chotacop Card PDF (Optional) ⬇️
               </button>
             </div>
-            <div className="flex items-center gap-2 flex-1 min-w-[180px]">
+            <div className="flex items-center gap-2 flex-1 min-w-[250px]">
               <input type="email" name="email" placeholder="Email" value={studentInfo.email} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2" />
               <button
                 type="button"
@@ -362,22 +389,13 @@ const QuestionTogglePage = () => {
             </select>
             <input type="text" name="name" placeholder="Name" value={studentInfo.name} onChange={handleInputChange} className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-4 py-2" />
             <input type="text" name="school" placeholder="School" value={studentInfo.school} onChange={handleInputChange} className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-4 py-2" />
-            {/* Desktop: Chotacop Card Button next to class select */}
-            <div className="flex items-center gap-4 flex-1 min-w-[180px]">
-              <select name="class" value={studentInfo.class} onChange={handleInputChange} className="flex-initial w-32 border border-gray-300 rounded-lg px-4 py-2">
+            <div className="flex items-center gap-4 flex-1 min-w-[250px]">
+              <select name="class" value={studentInfo.class} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2">
                 <option value="">Select Class</option>
                 {Array.from({ length: 12 }, (_, i) => (
                   <option key={i + 1} value={i + 1}>{`Class ${i + 1}`}</option>
                 ))}
               </select>
-              <button
-                type="button"
-                onClick={handleDownloadReportCard}
-                className="hidden md:block px-2 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition"
-                title="Download Chota Cop Report Card"
-              >
-                Chotacop Card PDF (Optional) ⬇️
-              </button>
             </div>
           </div>
         </div>
@@ -404,7 +422,6 @@ const QuestionTogglePage = () => {
               </tr>
             </thead>
             <tbody>
-              {/* Main Questions */}
               {questions.map((question, qIdx) => (
                 <tr key={qIdx} className="border-t">
                   <td className="p-4 text-sm font-medium text-gray-800">{question}</td>
@@ -494,13 +511,14 @@ const QuestionTogglePage = () => {
           parentAnswers={parentZoneAnswers}
           setParentAnswers={setParentZoneAnswers}
           disabled={!(rideActive.slice(0, 5).every(Boolean))}
+          onPopup={(msg) => { setPopupMessage(msg); setPopupOpen(true); }}
         />
 
         {/* PDF Upload */}
         <ImageUploader />
 
         {/* Submit Button */}
-        <div className="flex justify-center mt-8 gap-4">
+        <div className="flex justify-center mt-8 gap-4 relative">
           <button
             onClick={handleSubmit}
             disabled={!isStudentInfoComplete}
@@ -510,17 +528,32 @@ const QuestionTogglePage = () => {
           >
             Submit
           </button>
-          <button
-            onClick={handleDownloadCertificate}
-            disabled={!submitted || !rideActive.every(Boolean)}
-            className={`px-6 py-3 rounded-xl font-bold text-white transition-colors duration-300 ${
-              submitted && rideActive.every(Boolean)
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-gray-400 cursor-not-allowed"
-            }`}
-          >
-            Download Certificate
-          </button>
+          <div className="relative">
+            <button
+              onClick={handleDownloadCertificate}
+              disabled={!(submitted && rideActive.every(Boolean))}
+              onMouseEnter={() => {
+                if (!(submitted && rideActive.every(Boolean))) setShowCertTooltip(true);
+              }}
+              onMouseLeave={() => setShowCertTooltip(false)}
+              onFocus={() => {
+                if (!(submitted && rideActive.every(Boolean))) setShowCertTooltip(true);
+              }}
+              onBlur={() => setShowCertTooltip(false)}
+              className={`px-6 py-3 rounded-xl font-bold text-white transition-colors duration-300 ${
+                submitted && rideActive.every(Boolean)
+                  ? "bg-blue-600 hover:bg-blue-700"
+                  : "bg-gray-400 cursor-not-allowed"
+              }`}
+            >
+              Download Certificate
+            </button>
+            {showCertTooltip && (
+              <div className="absolute left-1/2 -translate-x-1/2 mt-2 px-4 py-2 bg-black text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
+                After answering all the seven rides and submitting the answer, you can get your certificate.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
