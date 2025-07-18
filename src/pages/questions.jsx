@@ -166,8 +166,8 @@ const QuestionTogglePage = () => {
   };
 
   const handleDownloadCertificate = async () => {
-    if (!(rideActive.every(Boolean) && submitted)) {
-      setPopupMessage('Please complete all seven rides and submit before generating the certificate.');
+    if (!(rideActive.slice(0, 5).every(Boolean) && submitted)) {
+      setPopupMessage('Please complete the first five rides and submit before generating the certificate.');
       setPopupOpen(true);
       return;
     }
@@ -427,20 +427,20 @@ const QuestionTogglePage = () => {
                   <td className="p-4 text-sm font-medium text-gray-800">{question}</td>
                   {Array.from({ length: TOTAL_RIDES }, (_, rideIdx) => {
                     const isAnswered = ridesAnswers[rideIdx][qIdx];
+                    const isActive = rideActive[rideIdx];
                     return (
                       <td key={rideIdx} className="p-4 text-center">
                         <div
-                          onClick={() => handleToggle(rideIdx, qIdx)}
-                          className={`relative w-14 h-6 rounded-full cursor-pointer transition-colors duration-300 mx-auto flex items-center px-1 ${
-                            isAnswered ? "bg-green-500" : "bg-red-500"
-                          }`}
+                          onClick={() => isActive && handleToggle(rideIdx, qIdx)}
+                          className={`relative w-14 h-6 rounded-full mx-auto flex items-center px-1 transition-colors duration-300 cursor-pointer
+                            ${!isActive ? 'bg-gray-300 cursor-not-allowed' : isAnswered ? 'bg-green-500' : 'bg-red-500'}`}
+                          style={{ pointerEvents: isActive ? 'auto' : 'none', opacity: isActive ? 1 : 0.6 }}
                         >
                           <span className="text-white text-xs font-bold w-1/2 text-center z-10">Y</span>
                           <span className="text-white text-xs font-bold w-1/2 text-center z-10">N</span>
                           <div
-                            className={`absolute w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
-                              isAnswered ? "translate-x-full" : "translate-x-0"
-                            }`}
+                            className={`absolute w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300
+                              ${isAnswered ? 'translate-x-full' : 'translate-x-0'}`}
                           />
                         </div>
                       </td>
@@ -483,18 +483,18 @@ const QuestionTogglePage = () => {
               <div className="flex items-center gap-2">
                 {Array.from({ length: TOTAL_RIDES }, (_, rideIdx) => {
                   const isAnswered = ridesAnswers[rideIdx][qIdx];
+                  const isActive = rideActive[rideIdx];
                   return (
                     <div
                       key={rideIdx}
-                      onClick={() => handleToggle(rideIdx, qIdx)}
-                      className={`relative w-10 h-5 rounded-full cursor-pointer transition-colors duration-300 flex items-center px-1 ${
-                        isAnswered ? "bg-green-500" : "bg-red-500"
-                      }`}
+                      onClick={() => isActive && handleToggle(rideIdx, qIdx)}
+                      className={`relative w-10 h-5 rounded-full flex items-center px-1 transition-colors duration-300 cursor-pointer
+                        ${!isActive ? 'bg-gray-300 cursor-not-allowed' : isAnswered ? 'bg-green-500' : 'bg-red-500'}`}
+                      style={{ pointerEvents: isActive ? 'auto' : 'none', opacity: isActive ? 1 : 0.6 }}
                     >
                       <div
-                        className={`absolute w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
-                          isAnswered ? "translate-x-5" : "translate-x-0"
-                        }`}
+                        className={`absolute w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300
+                          ${isAnswered ? 'translate-x-5' : 'translate-x-0'}`}
                       />
                     </div>
                   );
@@ -531,17 +531,17 @@ const QuestionTogglePage = () => {
           <div className="relative">
             <button
               onClick={handleDownloadCertificate}
-              disabled={!(submitted && rideActive.every(Boolean))}
+              disabled={!(submitted && rideActive.slice(0, 5).every(Boolean))}
               onMouseEnter={() => {
-                if (!(submitted && rideActive.every(Boolean))) setShowCertTooltip(true);
+                if (!(submitted && rideActive.slice(0, 5).every(Boolean))) setShowCertTooltip(true);
               }}
               onMouseLeave={() => setShowCertTooltip(false)}
               onFocus={() => {
-                if (!(submitted && rideActive.every(Boolean))) setShowCertTooltip(true);
+                if (!(submitted && rideActive.slice(0, 5).every(Boolean))) setShowCertTooltip(true);
               }}
               onBlur={() => setShowCertTooltip(false)}
               className={`px-6 py-3 rounded-xl font-bold text-white transition-colors duration-300 ${
-                submitted && rideActive.every(Boolean)
+                submitted && rideActive.slice(0, 5).every(Boolean)
                   ? "bg-blue-600 hover:bg-blue-700"
                   : "bg-gray-400 cursor-not-allowed"
               }`}
@@ -550,7 +550,7 @@ const QuestionTogglePage = () => {
             </button>
             {showCertTooltip && (
               <div className="absolute left-1/2 -translate-x-1/2 mt-2 px-4 py-2 bg-black text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
-                After answering all the seven rides and submitting the answer, you can get your certificate.
+                After answering the first five rides and submitting the answer, you can get your certificate.
               </div>
             )}
           </div>
