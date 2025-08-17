@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Header from "../components/Header";
 import ImageUploader from "../components/Image_Uploader";
 import html2canvas from "html2canvas";
@@ -6,7 +6,18 @@ import { jsPDF } from "jspdf";
 import Ex_Zone from "../components/Ex_Zone";
 import axios from "axios";
 import Popup from "../components/Popup";
+import ReCAPTCHA from "react-google-recaptcha";
 
+/**
+ * SITE KEY HANDLING
+ * - Put your real key in .env as: VITE_RECAPTCHA_SITE_KEY=your_key_here
+ * - For local dev (localhost), we fallback to Google's public test key to avoid crashes.
+ */
+const GOOGLE_TEST_V2_SITE_KEY = "6LehoagrAAAAAAfoIaDMGJJI8LkRGqaewejitNFG";
+const ENV_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+const SITE_KEY = ENV_SITE_KEY || (typeof window !== "undefined" && window.location.hostname === "localhost" ? GOOGLE_TEST_V2_SITE_KEY : "");
+
+// ------------------------ your existing constants ------------------------
 const questions = [
   "Were you riding with a parent?",
   "If on a bike or scooter, did everyone wear a helmet?",
@@ -28,6 +39,7 @@ const experienceQuestionsCount = 4;
 const parentQuestionsCount = 2;
 
 const QuestionTogglePage = () => {
+  // ------------------------ your existing state ------------------------
   const [ridesAnswers, setRidesAnswers] = useState(
     Array(TOTAL_RIDES).fill(null).map(() => Array(questions.length).fill(false))
   );
@@ -46,8 +58,11 @@ const QuestionTogglePage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
-  // Tooltip state for Download Certificate button
   const [showCertTooltip, setShowCertTooltip] = useState(false);
+
+  // ------------------------ captcha state ------------------------
+  const [showCaptcha, setShowCaptcha] = useState(false);
+  const recaptchaRef = useRef(null);
 
   const handleToggle = (rideIdx, questionIdx) => {
     if (!isStudentInfoComplete) {
@@ -96,65 +111,159 @@ const QuestionTogglePage = () => {
     });
   };
 
-  const handleCheckEmail = async () => {
+  // ------------------------ EMAIL CHECK: split into 2 steps ------------------------
+  // 1) Click "Check" -> show captcha (only if we have a site key)
+  const handleCheckEmail = () => {
     const email = studentInfo.email.trim();
-    if (!email) return alert("Please enter an email.");
-    setCheckingEmail(true);
-    try {
-      const res = await axios.post("https://chotacop.in/api/check-mail", { email }, {
+    if (!email) {
+      alert("Please enter an email.");
+      return;
+    }
+    if (!SITE_KEY) {
+      // Hard stop to avoid crash: tell dev/user to configure key
+      setPopupMessage(
+        "reCAPTCHA site key is missing. Add VITE_RECAPTCHA_SITE_KEY to your .env or use the Google test key on localhost."
+      );
+      setPopupOpen(true);
+      return;
+    }
+    setShowCaptcha(true);
+  };
+
+  // 2) Captcha solved -> verify on backend -> then run actual API calls
+  // const handleCaptchaComplete = async (token) => {
+  //   if (!token) return;
+  //   setCheckingEmail(true);
+  //   try {
+  //     // Verify with your FastAPI endpoint first (the code you shared).
+  //     // This endpoint should return { ok: true } on success.
+  //     await axios.post("https://chotacop.in/api/contact", {
+  //       recaptchaToken: token,               // FastAPI expects this
+  //       // You can include extra payload if your Pydantic model needs it.
+  //       // For v2, "action" isn't used; backend ignores action/score for v2.
+  //     }, {
+  //       headers: { "Content-Type": "application/json" },
+  //     });
+
+  //     // If verification passed, proceed with your original email check + restore data.
+  //     await runEmailCheck();
+  //   } catch (e) {
+  //     console.error("reCAPTCHA verification or email check failed:", e);
+  //     alert("reCAPTCHA verification failed. Please try again.");
+  //   } finally {
+  //     // Reset captcha so it can be used again
+  //     recaptchaRef.current?.reset?.();
+  //     setShowCaptcha(false);
+  //     setCheckingEmail(false);
+  //   }
+  // };
+
+
+  const handleCaptchaComplete = async (token) => {
+  if (!token) return;
+
+  try {
+    // Step 1: Verify reCAPTCHA with backend
+    const res = await axios.post("https://chotacop.in/api/contact", {
+      recaptchaToken: token,
+      email: studentInfo.email.trim(),
+    }, {
+      headers: { "Content-Type": "application/json" }
+    });
+
+    console.log("reCAPTCHA backend result:", res.data);
+
+    // Step 2: If backend says OK, then check email + get user data
+    if (res.data.ok) {
+      await runEmailCheck();
+    } else {
+      alert("reCAPTCHA verification failed. Please try again.");
+    }
+  } catch (err) {
+    console.error("Captcha or email check failed:", err.response?.data || err);
+    alert("Captcha verification failed. Please try again.");
+  } finally {
+    // Reset captcha
+    recaptchaRef.current?.reset?.();
+    setShowCaptcha(false);
+    setCheckingEmail(false);
+  }
+};
+
+
+  const handleCaptchaExpired = () => {
+    // Token expired before you verified
+    recaptchaRef.current?.reset?.();
+  };
+
+  const handleCaptchaErrored = () => {
+    console.error("reCAPTCHA failed to load or encountered an error.");
+    setPopupMessage("reCAPTCHA failed to load. Please refresh the page or try again later.");
+    setPopupOpen(true);
+  };
+
+  // All the original logic from your old handleCheckEmail moved here
+  const runEmailCheck = async () => {
+    const email = studentInfo.email.trim();
+    const res = await axios.post("https://chotacop.in/api/check-mail", { email }, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (res.data.exists) {
+      const dataRes = await axios.post("https://chotacop.in/api/email-data", { email }, {
         headers: { "Content-Type": "application/json" },
       });
-      if (res.data.exists) {
-        const dataRes = await axios.post("https://chotacop.in/api/email-data", { email }, {
-          headers: { "Content-Type": "application/json" },
-        });
-        const info = dataRes.data.data && dataRes.data.data[0];
-        if (info) {
-          setStudentInfo((prev) => ({
-            ...prev,
-            name: info.name || prev.name,
-            class: info.class || info.class_ || prev.class,
-            chapter: info.chapter || prev.chapter,
-            school: info.school || prev.school,
-            email: email
-          }));
-          if (info.q1) {
-            const newRidesAnswers = Array(TOTAL_RIDES).fill(null).map(() => Array(questions.length).fill(false));
-            for (let q = 0; q < questions.length; q++) {
-              const arr = info[`q${q + 1}`];
-              if (Array.isArray(arr)) {
-                for (let rideIdx = 0; rideIdx < arr.length; rideIdx++) {
-                  newRidesAnswers[rideIdx][q] = arr[rideIdx] === 1;
-                }
+      const info = dataRes.data.data && dataRes.data.data[0];
+
+      if (info) {
+        setStudentInfo((prev) => ({
+          ...prev,
+          name: info.name || prev.name,
+          class: info.class || info.class_ || prev.class,
+          chapter: info.chapter || prev.chapter,
+          school: info.school || prev.school,
+          email: email
+        }));
+
+        if (info.q1) {
+          const newRidesAnswers = Array(TOTAL_RIDES)
+            .fill(null)
+            .map(() => Array(questions.length).fill(false));
+          for (let q = 0; q < questions.length; q++) {
+            const arr = info[`q${q + 1}`];
+            if (Array.isArray(arr)) {
+              for (let rideIdx = 0; rideIdx < arr.length; rideIdx++) {
+                newRidesAnswers[rideIdx][q] = arr[rideIdx] === 1;
               }
             }
-            setRidesAnswers(newRidesAnswers);
           }
-          setExperienceAnswers([
-            info.c1 === 1,
-            info.c2 === 1,
-            info.c3 === 1,
-            info.c4 === 1
-          ]);
-          setParentZoneAnswers([
-            info.c5 === 1,
-            false
-          ]);
-          setPopupMessage(`Welcome back, ${info.name || "User"}!`);
-          setPopupOpen(true);
-        } else {
-          setPopupMessage("Welcome back!");
-          setPopupOpen(true);
+          setRidesAnswers(newRidesAnswers);
         }
+
+        setExperienceAnswers([
+          info.c1 === 1,
+          info.c2 === 1,
+          info.c3 === 1,
+          info.c4 === 1
+        ]);
+
+        setParentZoneAnswers([
+          info.c5 === 1,
+          false
+        ]);
+
+        setPopupMessage(`Welcome back, ${info.name || "User"}!`);
+        setPopupOpen(true);
       } else {
-        setPopupMessage("Welcome to chotacop!");
+        setPopupMessage("Welcome back!");
         setPopupOpen(true);
       }
-    } catch {
-      alert("Error checking email. Please try again.");
+    } else {
+      setPopupMessage("Welcome to chotacop!");
+      setPopupOpen(true);
     }
-    setCheckingEmail(false);
   };
+  // ------------------------ end email check flow ------------------------
 
   const handleDownloadReportCard = () => {
     const link = document.createElement('a');
@@ -259,7 +368,7 @@ const QuestionTogglePage = () => {
     };
     const activeRidesAnswers = ridesAnswers.filter((_, rideIdx) => rideActive[rideIdx]);
     for (let q = 0; q < questions.length; q++) {
-      data[`q${q + 1}`] = activeRidesAnswers.map((ride) => ride[q] ? 1 : 0);
+      data[`q${q + 1}`] = activeRidesAnswers.map((ride) => (ride[q] ? 1 : 0));
     }
     data["q13"] = data["q1"];
     for (let i = 0; i < experienceAnswers.length; i++) {
@@ -309,19 +418,52 @@ const QuestionTogglePage = () => {
                 Chotacop Card PDF (Optional) ⬇️
               </button>
             </div>
-            <div className="flex items-center gap-2 flex-1 min-w-[250px]">
-              <input type="email" name="email" placeholder="Email" value={studentInfo.email} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2" />
-              <button
-                type="button"
-                onClick={handleCheckEmail}
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition disabled:opacity-50"
-                disabled={checkingEmail}
-                title="Check Email"
-              >
-                {checkingEmail ? "Checking..." : "Check"}
-              </button>
+
+            {/* Email + Check + Captcha */}
+            <div className="flex flex-col gap-2 flex-1 min-w-[250px]">
+              <div className="flex items-center gap-2">
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={studentInfo.email}
+                  onChange={handleInputChange}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                />
+                <button
+                  type="button"
+                  onClick={handleCheckEmail}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+                  disabled={checkingEmail}
+                  title="Check Email"
+                >
+                  {checkingEmail ? "Checking..." : "Check"}
+                </button>
+              </div>
+
+              {showCaptcha && SITE_KEY && (
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={SITE_KEY}
+                  onChange={handleCaptchaComplete}
+                  onExpired={handleCaptchaExpired}
+                  onErrored={handleCaptchaErrored}
+                />
+              )}
+
+              {showCaptcha && !SITE_KEY && (
+                <div className="text-sm text-red-700 bg-red-100 border border-red-300 rounded p-2">
+                  reCAPTCHA site key is missing. Please add <b>VITE_RECAPTCHA_SITE_KEY</b> in your <code>.env</code>.
+                </div>
+              )}
             </div>
-            <select name="chapter" value={studentInfo.chapter} onChange={handleInputChange} className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-4 py-2">
+
+            <select
+              name="chapter"
+              value={studentInfo.chapter}
+              onChange={handleInputChange}
+              className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-4 py-2"
+            >
               <option value="">Select Chapter</option>
               <option value="Agra">Agra</option>
               <option value="Ahmedabad">Ahmedabad</option>
@@ -379,7 +521,7 @@ const QuestionTogglePage = () => {
               <option value="Surat">Surat</option>
               <option value="Thoothukudi">Thoothukudi</option>
               <option value="Tirupur">Tirupur</option>
-              <option value="Tirupur">Tirupati</option>
+              <option value="Tirupati">Tirupati</option>
               <option value="Trichy">Trichy</option>
               <option value="Trivandrum">Trivandrum</option>
               <option value="Vadodara">Vadodara</option>
@@ -387,10 +529,30 @@ const QuestionTogglePage = () => {
               <option value="Vellore">Vellore</option>
               <option value="Vizag">Vizag</option>
             </select>
-            <input type="text" name="name" placeholder="Name" value={studentInfo.name} onChange={handleInputChange} className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-4 py-2" />
-            <input type="text" name="school" placeholder="School" value={studentInfo.school} onChange={handleInputChange} className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-4 py-2" />
+
+            <input
+              type="text"
+              name="name"
+              placeholder="Name"
+              value={studentInfo.name}
+              onChange={handleInputChange}
+              className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-4 py-2"
+            />
+            <input
+              type="text"
+              name="school"
+              placeholder="School"
+              value={studentInfo.school}
+              onChange={handleInputChange}
+              className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-4 py-2"
+            />
             <div className="flex items-center gap-4 flex-1 min-w-[250px]">
-              <select name="class" value={studentInfo.class} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2">
+              <select
+                name="class"
+                value={studentInfo.class}
+                onChange={handleInputChange}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2"
+              >
                 <option value="">Select Class</option>
                 {Array.from({ length: 12 }, (_, i) => (
                   <option key={i + 1} value={i + 1}>{`Class ${i + 1}`}</option>
