@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import QuestionMatrix from "./QuestionMatrix";
 import ResponseBoxes from "./ResponseBoxes";
+import ActionDocument from "./Action_Doc"; // Import the ActionDocument component
+import CertificateButton from "./Cert_Button";
 
 // Updated API endpoint
 const API_ENDPOINT = "https://chotacop.in/api/chapter-data";
@@ -316,83 +318,105 @@ const SchoolSelector = ({ selectedChapter, setSelectedChapter, selectedSchool, s
   ]);
 
   return (
-    <div className="flex flex-col gap-6 mt-6 mb-10">
-      {/* Chapter + School */}
-      <div className="flex gap-4 items-end flex-wrap">
-        {/* Chapter Field/Dropdown */}
-        <div className="w-[650px]">
-          <label className="block text-sm font-medium mb-1">Chapter</label>
-          {isAllChapterStructure ? (
-            <select
-              className="p-2 border rounded-lg w-full"
-              value={selectedChapter}
-              onChange={(e) => {
-                setSelectedChapter(e.target.value);
-                setSelectedSchool("");
-              }}
-              disabled={
-                !userId ||
-                !allChaptersResponseData?.chapters ||
-                Object.keys(allChaptersResponseData.chapters).length === 0
-              }
-            >
-              <option value="">Select a chapter</option>
-              {allChaptersResponseData?.chapters &&
-                Object.keys(allChaptersResponseData.chapters).map((chapterName, index) => (
-                  <option key={chapterName || index} value={chapterName}>
-                    {chapterName}
-                  </option>
-                ))}
-            </select>
-          ) : (
-          <input
-            className="p-2 border rounded-lg w-full bg-gray-100 text-gray-700"
-              value={selectedChapter || "Loading chapter..."}
-            readOnly
-            disabled
+
+        <div className="flex flex-col gap-6 mt-6 mb-10">
+          {/* Chapter + School */}
+          <div className="flex flex-col gap-4">
+            {/* Chapter Field/Dropdown + ActionDocument button (responsive) */}
+            <div className="w-full md:w-[90%px]">
+              <label className="block text-sm font-medium mb-1">Chapter</label>
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                {isAllChapterStructure ? (
+                  <select
+                    className="p-2 border rounded-lg w-full sm:flex-1 min-w-0"
+                    value={selectedChapter}
+                    onChange={(e) => {
+                      setSelectedChapter(e.target.value);
+                      setSelectedSchool("");
+                    }}
+                    disabled={
+                      !userId ||
+                      !allChaptersResponseData?.chapters ||
+                      Object.keys(allChaptersResponseData.chapters).length === 0
+                    }
+                  >
+                    <option value="">Select a chapter</option>
+                    {allChaptersResponseData?.chapters &&
+                      Object.keys(allChaptersResponseData.chapters).map((chapterName, index) => (
+                        <option key={chapterName || index} value={chapterName}>
+                          {chapterName}
+                        </option>
+                      ))}
+                  </select>
+                ) : (
+                  <input
+                    className="p-2 border rounded-lg w-full sm:flex-1 min-w-0 bg-gray-100 text-gray-700"
+                    value={selectedChapter || "Loading chapter..."}
+                    readOnly
+                    disabled
+                  />
+                )}
+
+                {/* Button on the right (on sm+), stacks below on mobile */}
+                <div className="sm:flex-shrink-0">
+                  <ActionDocument />
+                </div>
+              </div>
+            </div>
+
+            {/* School Dropdown + CertificateButton (responsive, same layout as above) */}
+            <div className="w-full md:w-[90%px]">
+              <label className="block text-sm font-medium mb-1">School</label>
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <select
+                  className="p-2 border rounded-lg w-full sm:flex-1 min-w-0"
+                  value={selectedSchool}
+                  onChange={(e) => setSelectedSchool(e.target.value)}
+                  disabled={!selectedChapter || schools.length === 0}
+                >
+                  <option value="">Select a school</option>
+                  {schools.includes("All Schools") && <option value="All Schools">All Schools</option>}
+                  {schools
+                    .filter((school) => school !== "All Schools")
+                    .map((school, index) => (
+                      <option key={school || index} value={school}>
+                        {school}
+                      </option>
+                    ))}
+                </select>
+
+                {/* Button on the right (on sm+), stacks below on mobile) */}
+                <div className="sm:flex-shrink-0">
+                  <CertificateButton />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Render QuestionMatrix with processed data */}
+          <QuestionMatrix
+            observationAnalysisData={observationAnalysisData}
+            questionStatsAnalysisData={questionStatsAnalysisData}
           />
-          )}
+
+          {/* ResponseBoxes section */}
+          <div className="flex items-end gap-4 mb-2">
+            <div className="flex flex-col w-[220px]">
+              <div className="rounded-lg w-full font-medium"></div>
+            </div>
+            <div className="flex-1">
+              <ResponseBoxes count={8} />
+            </div>
+          </div>
         </div>
 
-        {/* School Dropdown */}
-        <div className="w-[650px]">
-          <label className="block text-sm font-medium mb-1">School</label>
-          <select
-            className="p-2 border rounded-lg w-full"
-            value={selectedSchool}
-            onChange={(e) => setSelectedSchool(e.target.value)}
-            disabled={!selectedChapter || schools.length === 0}
-          >
-            <option value="">Select a school</option>
-            {schools.includes("All Schools") && <option value="All Schools">All Schools</option>}
-            {schools
-              .filter((school) => school !== "All Schools")
-              .map((school, index) => (
-                <option key={school || index} value={school}>
-                {school}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
 
-      {/* Render QuestionMatrix with processed data */}
-      <QuestionMatrix
-        observationAnalysisData={observationAnalysisData}
-        questionStatsAnalysisData={questionStatsAnalysisData}
-      />
 
-      {/* ResponseBoxes section */}
-      <div className="flex items-end gap-4 mb-2">
-        <div className="flex flex-col w-[220px]">
-          <div className="rounded-lg w-full font-medium"></div>
-        </div>
-        <div className="flex-1">
-          <ResponseBoxes count={8} />
-        </div>
-      </div>
-    </div>
-  );
+  
+);
+
 };
 
 export default SchoolSelector;

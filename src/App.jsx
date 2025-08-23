@@ -10,6 +10,7 @@ import Homepage from './pages/Homepage'
 import QuestionTogglePage from './pages/questions'
 import AdminHomepage from './pages/Admin_Home'
 import Bulk_Submit from './pages/Bulk_Submit'
+// import EmailChange from './pages/Email_change'
 
 function App() {
 
@@ -25,6 +26,7 @@ function App() {
           <Route path="/questions" element={<QuestionTogglePage />} />
           <Route path="/admin" element={<AdminHomepage />} />
           <Route path="/bulk" element={<Bulk_Submit />} />
+          {/* <Route path="/email-change" element={<EmailChange />} /> */}
       </Routes>
     </BrowserRouter>
   )

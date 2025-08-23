@@ -249,7 +249,7 @@ const QuestionMatrix = ({ observationAnalysisData = null, questionStatsAnalysisD
 
   return (
     <div className="p-4 overflow-x-auto">
-      <div className="grid grid-cols-[300px_repeat(8,80px)] gap-12 items-center mb-4">
+      {/* <div className="grid grid-cols-[300px_repeat(8,80px)] gap-12 items-center mb-4">
         <div className="flex flex-col">
 
           <div className="flex flex-row space-x-2 md:hidden">
@@ -276,7 +276,7 @@ const QuestionMatrix = ({ observationAnalysisData = null, questionStatsAnalysisD
             </button>
           </div>
         </div>
-      </div>
+      </div> */}
       {/* Top Header Row: Total Responses and Ride Numbers */}
       <div className="grid grid-cols-[300px_repeat(8,80px)] gap-12 items-center mb-1">
         <div className="font-bold text-lg text-black">Total Responses</div>
