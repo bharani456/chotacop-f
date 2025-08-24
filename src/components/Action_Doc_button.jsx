@@ -1,6 +1,7 @@
+// ActionDocument.jsx
 import React from "react";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 const ActionDocument = ({ 
   selectedChapter, 
@@ -34,7 +35,7 @@ const ActionDocument = ({
         item.no,
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 50,
         head: [["Question", "Yes", "No"]],
         body: observationTable,
@@ -56,8 +57,8 @@ const ActionDocument = ({
         });
       });
 
-      doc.autoTable({
-        startY: doc.lastAutoTable.finalY + 10,
+      autoTable(doc, {
+        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 80,
         head: [["Question", "Ride", "Yes", "No", "Total"]],
         body: bodyData,
       });

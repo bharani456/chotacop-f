@@ -6,7 +6,7 @@ const CertificateButton = ({ onClick, disabled = false }) => {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label="Action Document"
+      aria-label="Certificates"
       className={`px-4 py-2 rounded-lg font-medium text-white transition
         ${disabled ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}
     >
