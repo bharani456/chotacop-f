@@ -57,7 +57,7 @@ const AdminHomepage = () => {
           </Link>
           { <Link to="/email-change">
             <img
-              src="/assets/change.png"
+              src="/assets/change-email.png"
               alt="Chota Cop Logo"
               className="w-40 h-auto hover:opacity-80 transition-opacity cursor-pointer"
             />
