@@ -71,6 +71,15 @@ const AdminHomepage = () => {
             />
             <p className="text-center text-xl font-bold ">Bulk Submit </p>
           </Link> */}
+
+        { <Link to="/add-schools">
+            <img
+              src="/assets/add-schools.png"
+              alt="Chota Cop Logo"
+              className="w-40 h-auto hover:opacity-80 transition-opacity cursor-pointer"
+            />
+            <p className="text-center text-xl font-bold ">Add Schools </p>
+          </Link> }
         </div>
       </div>
     </div>

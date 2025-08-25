@@ -555,6 +555,23 @@ const SchoolSelector = ({ selectedChapter, setSelectedChapter, selectedSchool, s
           const schoolNames = Object.keys(responseData.observation);
           setSchools(schoolNames);
           setSelectedSchool(schoolNames.length > 0 ? "All Schools" : "");
+        } else if (
+          responseData &&
+          typeof responseData === "object" &&
+          responseData.chapter &&
+          (!responseData.observation ||
+            (typeof responseData.observation === "object" &&
+              Object.keys(responseData.observation || {}).length === 0))
+        ) {
+          // Handle case: user has a chapter but no observation data
+          setIsAllChapterStructure(false);
+          setStandardUserResponseData(responseData);
+          setSelectedChapter(responseData.chapter || "");
+          setSchools([]);
+          setSelectedSchool("");
+          setObservationAnalysisData(null);
+          setQuestionStatsAnalysisData(null);
+          alert("🚨 There is no data found for this chapter" );
         } else {
           console.error("Unexpected API response:", responseData);
           alert("Error fetching initial data.");

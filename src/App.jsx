@@ -11,6 +11,7 @@ import QuestionTogglePage from './pages/questions'
 import AdminHomepage from './pages/Admin_Home'
 import Bulk_Submit from './pages/Bulk_Submit'
 import EmailChange from './pages/Email_change'
+import AddSchools from './pages/AddSchools'
 
 function App() {
 
@@ -27,6 +28,7 @@ function App() {
           <Route path="/admin" element={<AdminHomepage />} />
           <Route path="/bulk" element={<Bulk_Submit />} />
           <Route path="/email-change" element={<EmailChange />} />
+          <Route path="/add-schools" element={<AddSchools />} />
       </Routes>
     </BrowserRouter>
   )
