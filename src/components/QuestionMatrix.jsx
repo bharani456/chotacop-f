@@ -1,4 +1,3 @@
-
 // import React from "react";
 // import { PieChart, Pie, Cell } from "recharts";
 
@@ -65,33 +64,34 @@
 
 // const QuestionMatrix = ({ observationAnalysisData = null, questionStatsAnalysisData = null }) => {
 //   // Calculate total responses for Card Data (observationAnalysisData)
-//   const totalCardResponses = observationAnalysisData
+//   const cardBaseTotal = observationAnalysisData
 //     ? Math.max(...observationAnalysisData.map((item) => (item.yes || 0) + (item.no || 0)), 0)
 //     : 0;
 
 //   // Calculate total responses for each ride (from questionStatsAnalysisData)
-//   const totalRideResponses = questionStatsAnalysisData
-//     ? Math.max(
-//         ...questionStatsAnalysisData.map((q) =>
-//           Math.max(...q.rides.map((ride) => ride.total || 0))
-//         ),
-//         0
+//   const rideTotals = questionStatsAnalysisData
+//     ? questionStatsAnalysisData.map((q) =>
+//         Math.max(...q.rides.map((ride) => (ride.yes || 0) + (ride.no || 0)))
 //       )
-//     : 0;
+//     : Array(7).fill(0);
+//   const maxRideTotal = Math.max(...rideTotals);
+
+//   // Add the maximum ride total to the Card Data total and divide Card Data by 10
+//   const totalCardResponses = (cardBaseTotal / 10) + (questionStatsAnalysisData ? maxRideTotal : 0);
 
 //   return (
 //     <div className="p-4 overflow-x-auto">
-//             {/* Top Header Row: Total Responses and Ride Numbers */}
+//       {/* Top Header Row: Total Responses and Ride Numbers */}
 //       <div className="grid grid-cols-[300px_repeat(8,80px)] gap-12 items-center mb-1">
 //         <div className="font-bold text-lg text-black">Total Responses</div>
 //         {/* Card Data Total Responses */}
 //         <div className="text-center font-bold text-lg text-black">
-//           {observationAnalysisData ? totalCardResponses : "-"}
+//           {observationAnalysisData || questionStatsAnalysisData ? totalCardResponses : "-"}
 //         </div>
 //         {/* Ride 1-7 Total Responses */}
 //         {Array.from({ length: 7 }).map((_, idx) => (
 //           <div key={idx + 1} className="text-center font-bold text-lg text-black">
-//             {questionStatsAnalysisData ? totalRideResponses : 0}
+//             {questionStatsAnalysisData ? rideTotals[idx] : 0}
 //           </div>
 //         ))}
 //       </div>
@@ -114,17 +114,27 @@
 //         const cardQuestionData = observationAnalysisData
 //           ? observationAnalysisData.find((item) => item.q === q) || { yes: 0, no: 0 }
 //           : { yes: 0, no: 0 };
-//         const cardChartData = [
-//           { name: "Yes", value: cardQuestionData.yes || 0 },
-//           { name: "No", value: cardQuestionData.no || 0 },
-//         ];
-
-//         // Ride Data for columns 1-7 (indices 1-7)
 //         const rideQuestionData = questionStatsAnalysisData
 //           ? questionStatsAnalysisData.find((item) => item.qIndex === qIdx) || {
 //               rides: Array(7).fill({ yes: 0, no: 0 }),
 //             }
 //           : { rides: Array(7).fill({ yes: 0, no: 0 }) };
+
+//         // Sum up all yes and no values from Ride 1-7
+//         const totalYesFromRides = rideQuestionData.rides.reduce((sum, ride) => sum + (ride.yes || 0), 0);
+//         const totalNoFromRides = rideQuestionData.rides.reduce((sum, ride) => sum + (ride.no || 0), 0);
+
+//         // Add Ride 1-7 totals to Card Data
+//         const combinedCardData = {
+//           yes: (cardQuestionData.yes || 0) + totalYesFromRides,
+//           no: (cardQuestionData.no || 0) + totalNoFromRides,
+//         };
+//         const cardChartData = [
+//           { name: "Yes", value: combinedCardData.yes },
+//           { name: "No", value: combinedCardData.no },
+//         ];
+
+//         // Ride Data for columns 1-7 (indices 1-7)
 //         const rideChartsData = rideQuestionData.rides.map((ride) => [
 //           { name: "Yes", value: ride.yes || 0 },
 //           { name: "No", value: ride.no || 0 },
@@ -154,6 +164,12 @@
 // };
 
 // export default QuestionMatrix;
+
+
+
+
+
+
 
 import React from "react";
 import { PieChart, Pie, Cell } from "recharts";
@@ -268,30 +284,48 @@ const QuestionMatrix = ({ observationAnalysisData = null, questionStatsAnalysisD
       {/* Data Rows: Question Text and Donut Charts */}
       {questions.map((q, qIdx) => {
         // Card Data for the first column (index 0)
-        const cardQuestionData = observationAnalysisData
-          ? observationAnalysisData.find((item) => item.q === q) || { yes: 0, no: 0 }
-          : { yes: 0, no: 0 };
+        let cardChartData;
+        if (!observationAnalysisData && questionStatsAnalysisData) {
+          const rideQuestionData = questionStatsAnalysisData.find((item) => item.qIndex === qIdx) || {
+            rides: Array(7).fill({ yes: 0, no: 0 }),
+          };
+          const totalYesFromRides = rideQuestionData.rides.reduce((sum, ride) => sum + (ride.yes || 0), 0);
+          const totalNoFromRides = rideQuestionData.rides.reduce((sum, ride) => sum + (ride.no || 0), 0);
+          cardChartData = [
+            { name: "Yes", value: totalYesFromRides },
+            { name: "No", value: totalNoFromRides },
+          ];
+        } else {
+          const cardQuestionData = observationAnalysisData
+            ? observationAnalysisData.find((item) => item.q === q) || { yes: 0, no: 0 }
+            : { yes: 0, no: 0 };
+          const rideQuestionData = questionStatsAnalysisData
+            ? questionStatsAnalysisData.find((item) => item.qIndex === qIdx) || {
+                rides: Array(7).fill({ yes: 0, no: 0 }),
+              }
+            : { rides: Array(7).fill({ yes: 0, no: 0 }) };
+
+          // Sum up all yes and no values from Ride 1-7
+          const totalYesFromRides = rideQuestionData.rides.reduce((sum, ride) => sum + (ride.yes || 0), 0);
+          const totalNoFromRides = rideQuestionData.rides.reduce((sum, ride) => sum + (ride.no || 0), 0);
+
+          // Add Ride 1-7 totals to Card Data
+          const combinedCardData = {
+            yes: (cardQuestionData.yes || 0) + totalYesFromRides,
+            no: (cardQuestionData.no || 0) + totalNoFromRides,
+          };
+          cardChartData = [
+            { name: "Yes", value: combinedCardData.yes },
+            { name: "No", value: combinedCardData.no },
+          ];
+        }
+
+        // Ride Data for columns 1-7 (indices 1-7)
         const rideQuestionData = questionStatsAnalysisData
           ? questionStatsAnalysisData.find((item) => item.qIndex === qIdx) || {
               rides: Array(7).fill({ yes: 0, no: 0 }),
             }
           : { rides: Array(7).fill({ yes: 0, no: 0 }) };
-
-        // Sum up all yes and no values from Ride 1-7
-        const totalYesFromRides = rideQuestionData.rides.reduce((sum, ride) => sum + (ride.yes || 0), 0);
-        const totalNoFromRides = rideQuestionData.rides.reduce((sum, ride) => sum + (ride.no || 0), 0);
-
-        // Add Ride 1-7 totals to Card Data
-        const combinedCardData = {
-          yes: (cardQuestionData.yes || 0) + totalYesFromRides,
-          no: (cardQuestionData.no || 0) + totalNoFromRides,
-        };
-        const cardChartData = [
-          { name: "Yes", value: combinedCardData.yes },
-          { name: "No", value: combinedCardData.no },
-        ];
-
-        // Ride Data for columns 1-7 (indices 1-7)
         const rideChartsData = rideQuestionData.rides.map((ride) => [
           { name: "Yes", value: ride.yes || 0 },
           { name: "No", value: ride.no || 0 },
@@ -305,7 +339,7 @@ const QuestionMatrix = ({ observationAnalysisData = null, questionStatsAnalysisD
             <div className="text-sm">{q}</div>
             {/* Card Data Column */}
             <div className="flex justify-center">
-              <DonutChart data={cardChartData} isActive={!!observationAnalysisData} />
+              <DonutChart data={cardChartData} isActive={!!observationAnalysisData || !!questionStatsAnalysisData} />
             </div>
             {/* Ride 1-7 Columns */}
             {Array.from({ length: 7 }).map((_, idx) => (
