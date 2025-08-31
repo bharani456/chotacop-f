@@ -1,8 +1,25 @@
 import React from "react";
-import { Link } from "react-router-dom"; // Import Link for navigation
+import { Link, useNavigate } from "react-router-dom"; // Import Link for navigation
 import Header from "../components/Header"; // Assuming Header is in src/components
 
 const Homepage = () => {
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    try {
+      const userData = localStorage.getItem("user");
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        const userId = parsed?.userId;
+        if (userId) {
+          navigate("/admin", { replace: true });
+        }
+      }
+    } catch (e) {
+      // Ignore parsing errors and stay on homepage
+    }
+  }, [navigate]);
+
   return (
     <div className="flex flex-col min-h-screen bg-orange-50">
       <Header isHomepage={true} />
